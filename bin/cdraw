@@ -1,0 +1,9 @@
+#!/usr/bin/env python
+from cdraw.config import Config
+from cdraw.cdraw import CDraw
+
+
+
+if __name__ == '__main__':
+    c = CDraw(config=Config())()
+

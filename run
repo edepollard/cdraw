@@ -1,0 +1,48 @@
+#!/bin/bash
+
+# Set up PYTHONPATH to include src directory so 'cves' module can be imported
+export PYTHONPATH="${PYTHONPATH}:$(dirname "$0")/src"
+
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+BIN_DIR="${SCRIPT_DIR}/bin"
+
+# Check if an executable name was provided
+if [ $# -eq 0 ]; then
+    echo "Usage: $0 <executable> [arguments...]"
+    echo ""
+    echo "Available executables in bin/:"
+    if [ -d "$BIN_DIR" ]; then
+        ls -1 "$BIN_DIR"
+    else
+        echo "  (bin/ directory not found)"
+    fi
+    exit 1
+fi
+
+# Get the executable name and shift arguments
+EXECUTABLE="$1"
+shift
+
+# Construct the full path to the executable
+EXEC_PATH="${BIN_DIR}/${EXECUTABLE}"
+
+# Check if the executable exists
+if [ ! -f "$EXEC_PATH" ]; then
+    echo "Error: Executable '${EXECUTABLE}' not found in ${BIN_DIR}"
+    echo ""
+    echo "Available executables:"
+    if [ -d "$BIN_DIR" ]; then
+        ls -1 "$BIN_DIR"
+    fi
+    exit 1
+fi
+
+# Make sure it's executable
+if [ ! -x "$EXEC_PATH" ]; then
+    chmod +x "$EXEC_PATH"
+fi
+
+# Execute the script with remaining arguments
+exec "$EXEC_PATH" "$@"
+
