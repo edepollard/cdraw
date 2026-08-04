@@ -1,5 +1,5 @@
 import curses
-from.curses import CursesElement
+from.curses import CursesElement, CPanel
 from.config import Config
 
 class CDraw(CursesElement):
@@ -13,6 +13,7 @@ class CDraw(CursesElement):
         self.artifacts = []
         self.show_coordinates = 0
         self.show_artifacts = 1
+        self.show_artifact_info = False
         self.show_help = 0
         self.art_id = 0
         self.creating_frame = None
@@ -80,6 +81,9 @@ class CDraw(CursesElement):
             elif key in [ord('h'),ord('H')]:
                 self.show_help = False\
                      if self.show_help else True
+            elif key in [ord('i'),ord('I')]:
+                self.show_artifact_info = False\
+                     if self.show_artifact_info else True
             elif key in [ord('a'),ord('A')]:
                 self.add_anchor()
             elif key in [ord('x'),ord('X')]:
@@ -113,6 +117,7 @@ class CDraw(CursesElement):
         self.display_artifacts()
         self.display_coordinates()
         self.draw_creating_frame()
+        self.draw_artifact_info()
         self.draw_help()
         self.stdscr.refresh()
 
@@ -125,6 +130,48 @@ class CDraw(CursesElement):
 
     def draw_footer(self):
         self.stdscr.hline(self.h-2,0,curses.ACS_HLINE,self.w)
+
+    def artifactyx(self,a):
+        if not a: return False
+        elif a['style'] == 'frame': return a['start']
+        elif a['style'] == 'anchor': return (a['y'],a['x'])
+        return False
+    @property
+    def yx(self):
+        return (self.y,self.x)
+
+    def artifacts_selected(self):
+        selected = []
+        for a in self.artifacts:
+            if self.artifactyx(a) == self.yx: selected.append(a)
+        return selected
+
+    def draw_artifact_info(self):
+        if not self.show_artifact_info:# or not self.artifact_selected::
+            return
+        artifacts = self.artifacts_selected()
+        y,x = 10,30
+        height = 8
+        width = 33
+        info_panel = CPanel(self.stdscr,y,x,height,width)
+        for a in artifacts:
+            info_panel.add_panel_line([
+                         [self.dim_white,2,'Id:'],
+                         [self.white,6,a['id']],
+                        ])
+            info_panel.add_panel_line([
+                         [self.dim_white,2,'Style:'],
+                         [self.white,8,a['style']],
+                        ])
+            coordinates =[
+                          [self.dim_white,2,'Coordinates:'],
+                          [self.white,15,self.artifactyx(a)],
+                         ]
+            if a['style'] == 'frame':
+                coordinates.append([self.white,23,f"{a['end']}"])
+            info_panel.add_panel_line(coordinates)
+            info_panel.add_panel_line()
+        info_panel.draw_panel()
 
     def draw_creating_frame(self):
         if not self.creating_frame:
@@ -237,8 +284,8 @@ class CDraw(CursesElement):
         if not self.show_help:
             return
         y,x = 10,10
-        width = 33
-        height= 7
+        width = 43
+        height= 8
         self.draw_frame(y,x,y+height,x+width,fill=True)
         self.addcolorstr(self.white,y,x+5,"Help")
         self.addcolorstr(self.CONTROL_COLOR,y,x+5,"H")
@@ -254,11 +301,14 @@ class CDraw(CursesElement):
         self.addcolorstr(self.CONTROL_COLOR,y+4,x+2,"C")
         self.addcolorstr(self.white,y+4,x+4,
                               "Show/Hide Coordinate Data")
-        self.addcolorstr(self.CONTROL_COLOR,y+5,x+2,"X")
+        self.addcolorstr(self.CONTROL_COLOR,y+5,x+2,"I")
         self.addcolorstr(self.white,y+5,x+4,
-                              "Delete All Artifacts")
-        self.addcolorstr(self.CONTROL_COLOR,y+6,x+2,"Q")
+                              "Show/Hide Info for Selected Artifacts")
+        self.addcolorstr(self.CONTROL_COLOR,y+6,x+2,"X")
         self.addcolorstr(self.white,y+6,x+4,
+                              "Delete All Artifacts")
+        self.addcolorstr(self.CONTROL_COLOR,y+7,x+2,"Q")
+        self.addcolorstr(self.white,y+7,x+4,
                               "Quit")
 
     def draw_crosshairs(self):

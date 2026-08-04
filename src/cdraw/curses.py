@@ -776,4 +776,121 @@ class SettingsDisplay(CursesElement):
             self.config.select = 'highlight'
         return
 
+class CPanel(CursesElement):
+    def __init__(self, stdscr, y, x, height, width,
+                       config=False, frame=True,
+                       Title=False):
+        self.config = config if config else Config()
+        self.stdscr = stdscr
+        self.frame = frame
+        self._y = y
+        self._x = x
+        self._width = width
+        self._height = height
+        self.frame = frame
+        self.title = False
+        self.start = 0
+        self._lines = []
+        self.controls = []
+
+
+    @property
+    def lines(self):
+        return self._lines
+    @lines.setter
+    def lines(self,l):
+        self._lines = l
+
+    @property
+    def x(self):
+        return self._x
+    @x.setter
+    def x(self, x):
+        if isinstance(x,int) and x < self.w-1:
+            self._x = x
+        else:
+            raise ValueError(
+                   f"'x' must be of type 'int' and < screen width -1")
+
+    @property
+    def y(self):
+        return self._y
+    @y.setter
+    def y(self,y):
+        if isinstance(y,int) and y < self.h-1:
+            self._y = y
+        else:
+            raise ValueError(
+                   f"'y' must be of type 'int' and < screen height -1")
+
+    @property
+    def width(self):
+        return self._width
+    @width.setter
+    def width(self, i):
+        if isinstance(i,int) and i < self.w-1-self.x:
+            self._width = i
+        else:
+            raise ValueError(
+                   f"'width' must be of type 'int' and "+\
+                   f"< screen {self.w-1-self.x}")
+
+    @property
+    def height(self):
+        return self._height
+    @height.setter
+    def height(self, i):
+        if isinstance(i,int) and i < self.h-1-self.y:
+            self._height = i
+        else:
+            raise ValueError(
+                   f"'height' must be of type 'int' and "+\
+                   f"< screen {self.h-2-self.x}")
+
+
+    def handle_panel_input(self, key):
+        for i in self.controls:
+            if key in i['controls']:
+                kwargs = i['kwargs']
+                if kwargs:
+                    i['action'](**kwargs)
+                else:
+                    i['action']
+                return key
+        return key
+
+    def add_control_key(self, keys, action, kwargs=None):
+        if not isinstance(keys,list)\
+           or not all(type(item) is int for item in keys):
+            raise ValueError("'keys' must be a list of integers.")
+        if kwargs and not isinstance(kwargs, dict):
+            raise ValueError("'kwargs' must be wither None or `dict`")
+        self.controls.append({'controls':keys,
+                              'action':action,
+                              'kwargs':kwargs,
+                             })
+
+    def add_panel_line(self, line=None):
+        if line == None:
+            self._lines.append(line)
+            return
+        elif isinstance(line, list):
+            self._lines.append(line)
+            return
+        raise ValueError("'line' must be a 'list' of 'list's or None.")
+
+    def draw_panel(self):
+        if self.frame:
+            self.draw_frame(self.y,self.x,
+                            self.y+self.height,
+                            self.x+self.width)
+        i = 1
+        for idx,line in enumerate(self.lines):
+            if idx < self.start:
+                next
+            if line != None:
+                for item in line:
+                    self.addcolorstr(item[0],self.y+i,self.x+item[1],
+                                     item[2])
+            i += 1
 
