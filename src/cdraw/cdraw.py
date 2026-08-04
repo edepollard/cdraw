@@ -7,7 +7,7 @@ class CDraw(CursesElement):
         self.config=config if config else Config()
         self.log=self.config.log
         self.config.color = True
-        self.y = 0
+        self.y = 1
         self.x = 0
         self.artifacts = []
         self.show_coordinates = 0
@@ -46,7 +46,7 @@ class CDraw(CursesElement):
         self.stdscr.clear()
         self.draw_screen()
         self.get_input()
-        
+
     def get_input(self):
         while True:
             key = self.stdscr.getch()
@@ -55,13 +55,21 @@ class CDraw(CursesElement):
             elif key in [ord('f'),ord('F')]:
                 self.frame()
             elif key == curses.KEY_DOWN:
-                self.y = self.y+1 if self.y < self.h-1 else self.y
+                self.y = self.y+1 if self.y < self.h-2 else self.y
             elif key == curses.KEY_UP:
-                self.y = self.y-1 if self.y > 0 else self.y
+                if self.creating_frame and\
+                      self.y == self.creating_frame['start'][0]:
+                    pass
+                else:
+                    self.y = self.y-1 if self.y > 1 else self.y
             elif key == curses.KEY_RIGHT:
                 self.x = self.x+1 if self.x < self.w-1 else self.x
             elif key == curses.KEY_LEFT:
-                self.x = self.x-1 if self.x > 0 else self.x
+                if self.creating_frame and\
+                      self.x == self.creating_frame['start'][1]:
+                    pass
+                else:
+                    self.x = self.x-1 if self.x > 0 else self.x
             elif key in [ord('c'),ord('C')]:
                 self.show_coordinates = False\
                      if self.show_coordinates else True
@@ -98,6 +106,8 @@ class CDraw(CursesElement):
     def draw_screen(self):
         self.set_geometry()
         self.stdscr.clear()
+        self.draw_header()
+        self.draw_footer()
         self.draw_crosshairs()
         self.display_artifacts()
         self.display_coordinates()
@@ -105,12 +115,27 @@ class CDraw(CursesElement):
         self.draw_help()
         self.stdscr.refresh()
 
+    def draw_header(self):
+        self.stdscr.hline(1,0,curses.ACS_HLINE,self.w)
+
+    def draw_footer(self):
+        self.stdscr.hline(self.h-2,0,curses.ACS_HLINE,self.w)
+
     def draw_creating_frame(self):
         if not self.creating_frame:
             return
-        f =self.creating_frame
-        self.draw_frame(f['start'][0],f['start'][1],
+        f = self.creating_frame
+        if self.x > f['start'][1] and \
+           self.y > f['start'][0]:
+            self.draw_frame(f['start'][0],f['start'][1],
                          self.y,self.x,color=self.yellow)
+        elif self.y == f['start'][0] and self.x > f['start'][1]:
+             self.stdscr.hline(f['start'][0],f['start'][1],
+                               curses.ACS_HLINE,self.x-f['start'][1])
+        elif self.x == f['start'][1] and self.y > f['start'][0]:
+             self.stdscr.vline(f['start'][0],f['start'][1],
+                               curses.ACS_VLINE,self.y-f['start'][0])
+
 
     def display_artifacts(self):
         if not self.show_artifacts:
@@ -198,11 +223,12 @@ class CDraw(CursesElement):
                               "Quit")
 
     def draw_crosshairs(self):
-        _y = 0
+        _y = 1
         _x = 0
-        while _y < self.h:
+        while _y < self.h-1:
             if _y != self.y:
-                if (_y,self.x) != (self.h-1,self.w-1):
+                if (_y,self.x) != (self.h-1,self.w-1)\
+                   and _y not in [self.h-2,0,1]:
                     self.addcolorstr(self.dim_white,_y,self.x,"│")
             _y += 1
         while _x < self.w:
@@ -210,6 +236,7 @@ class CDraw(CursesElement):
                 if (self.y,_x) != (self.h-1,self.w-1):
                     self.addcolorstr(self.dim_white,self.y,_x,"─")
             _x += 1
+        self.addcolorstr(self.white,self.y,self.x,"+")
 
 
 
