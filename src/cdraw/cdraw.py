@@ -7,6 +7,7 @@ class CDraw(CursesElement):
         self.config=config if config else Config()
         self.log=self.config.log
         self.config.color = True
+        self.title = "Curses Draw DevTool"
         self.y = 1
         self.x = 0
         self.artifacts = []
@@ -117,6 +118,10 @@ class CDraw(CursesElement):
 
     def draw_header(self):
         self.stdscr.hline(1,0,curses.ACS_HLINE,self.w)
+        title_start = (self.w-len(self.title))//2
+        self.addcolorstr(self.TITLE_COLOR,0,title_start,self.title)
+        self.addcolorstr(self.dim_white,0,self.w-10,  f"Y,X:{self.y},{self.x}")
+        self.addcolorstr(self.dim_white,0,0,f"H,W:{self.h},{self.w}")
 
     def draw_footer(self):
         self.stdscr.hline(self.h-2,0,curses.ACS_HLINE,self.w)
@@ -128,7 +133,8 @@ class CDraw(CursesElement):
         if self.x > f['start'][1] and \
            self.y > f['start'][0]:
             self.draw_frame(f['start'][0],f['start'][1],
-                         self.y,self.x,color=self.yellow)
+                         #self.y,self.x,color=self.yellow)
+                         self.y,self.x,color=self.green|curses.A_BOLD)
         elif self.y == f['start'][0] and self.x > f['start'][1]:
              self.stdscr.hline(f['start'][0],f['start'][1],
                                curses.ACS_HLINE,self.x-f['start'][1])
@@ -138,21 +144,39 @@ class CDraw(CursesElement):
 
 
     def display_artifacts(self):
-        if not self.show_artifacts:
+        if not self.show_artifacts or not self.artifacts:
             return
+        on_artifact_origin = False
         for a in self.artifacts:
             if a['style'] =='frame':
                 color = self.green|self.DIM
-                if self.artifacts and (self.y,self.x) == a['start']:
+                if (self.y,self.x) == a['start']:
                     color=self.yellow
-                self.draw_frame(a['start'][0],a['start'][1],
-                                a['end'][0],a['end'][1],
-                                color=color)
+                    on_artifact_origin = True
+                if ((self.x in [a['start'][1],a['end'][1]]) and\
+                    (self.y >= a['start'][0] and self.y <= a['end'][0]))\
+                   or\
+                   ((self.y in [a['start'][0],a['end'][0]]) and\
+                    (self.x >= a['start'][1] and self.x <= a['end'][1])):
+                    color=self.yellow
+                if a['end'][1] > a['start'][1] and a['end'][0] > a['start'][0]:
+                    self.draw_frame(a['start'][0],a['start'][1],
+                                    a['end'][0],a['end'][1],
+                                    color=color)
+                elif a['end'][0]==a['start'][0] and a['end'][1] > a['start'][1]:
+                    self.stdscr.hline(a['start'][0],a['start'][1],
+                                curses.ACS_HLINE,a['end'][1]-a['start'][1])
+                elif a['end'][1]==a['start'][1] and a['end'][0] > a['start'][0]:
+                    self.stdscr.vline(a['start'][0],a['start'][1],
+                                   curses.ACS_VLINE,a['end'][0]-a['start'][0])
             if a['style'] == 'anchor':
-                color = self.magenta    
+                color = self.magenta
                 if self.artifacts and (self.y,self.x) == (a['y'],a['x']):
                     color = self.yellow
+                    on_artifact_origin = True
                 self.addcolorstr(color,a['y'],a['x'],a['ch'])
+        if not on_artifact_origin:
+            self.addcolorstr(self.magenta|self.DIM,self.y,self.x,"+")
 
     def add_anchor(self):
         if (self.y,self.x) == (self.h-1,self.w-1):
@@ -175,24 +199,39 @@ class CDraw(CursesElement):
 
     def display_coordinates(self):
         if self.show_coordinates:
-            y,x = 5,5
-            self.addcolorstr(self.cyan,y,x,  f"Y,X:{self.y},{self.x}")
-            self.addcolorstr(self.cyan,y+1,x,f"H,W:{self.h},{self.w}")
-            if self.creating_frame:
-                self.addcolorstr(self.cyan,y+2,x,f"{self.creating_frame}")
-            idx = 1
+            _x = 0
+            #if self.creating_frame:
+            #    self.addcolorstr(self.cyan,y+2,x,f"{self.creating_frame}")
+
             if self.artifacts:
                 for a in self.artifacts:
                     if a['style'] == 'frame':
-                        if (self.y,self.x) == a['start']:
-                            self.addcolorstr(self.green,y+2+idx,x,
-                                    f"Frame:{a['start']},{a['end']}")
-                            idx += 1
+                        s_cstr = f"{a['start']}"
+                        s_cstr_len = len(s_cstr)
+                        e_cstr = f"{a['end']}"
+                        e_cstr_len = len(e_cstr)
+                        if a['start'][1]+s_cstr_len < self.w-2:
+                            _x = a['start'][1]+1
+                        else:
+                            _x = a['start'][1]-s_cstr_len-1
+                        self.addcolorstr(self.cyan,a['start'][0],_x,s_cstr)
+                        if a['end'][1]+e_cstr_len < self.w-2:
+                            _x = a['end'][1]+1
+                        else:
+                            _x = a['end'][1]-e_cstr_len
+                        self.addcolorstr(self.cyan,a['end'][0],_x,e_cstr)
+                    #    if (self.y,self.x) == a['start']:
+                    #        self.addcolorstr(self.green,y+2+idx,x,
+                    #                f"Frame:{a['start']},{a['end']}")
+                    #        idx += 1
                     if a['style'] == 'anchor':
-                        if (self.y,self.x) == (a['y'],a['x']):
-                            self.addcolorstr(self.green,y+2+idx,x,
-                                    f"Anchor:({a['y']},{a['x']})")
-                            idx += 1
+                        cstr = f"({a['y']},{a['x']})"
+                        cstr_len = len(cstr)
+                        if a['x']+cstr_len < self.w-2:
+                            _x = a['x']+1
+                        else:
+                            _x = a['x']-cstr_len-1
+                        self.addcolorstr(self.cyan,a['y'],_x,cstr)
 
     def draw_help(self):
         if not self.show_help:
@@ -236,9 +275,4 @@ class CDraw(CursesElement):
                 if (self.y,_x) != (self.h-1,self.w-1):
                     self.addcolorstr(self.dim_white,self.y,_x,"─")
             _x += 1
-        self.addcolorstr(self.white,self.y,self.x,"+")
-
-
-
-
-        
+        self.addcolorstr(self.magenta|self.DIM,self.y,self.x,"+")
