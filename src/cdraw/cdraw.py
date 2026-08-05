@@ -200,28 +200,20 @@ class CDraw(CursesElement):
                 if (self.y,self.x) == a['start']:
                     color=self.yellow
                     on_artifact_origin = True
-                #if ((self.x in [a['start'][1],a['end'][1]]) and\
-                #    (self.y >= a['start'][0] and self.y <= a['end'][0]))\
-                #   or\
-                #   ((self.y in [a['start'][0],a['end'][0]]) and\
-                #    (self.x >= a['start'][1] and self.x <= a['end'][1])):
-                #    color=self.yellow
                 if a['end'][1] > a['start'][1] and a['end'][0] > a['start'][0]:
                     self.draw_frame(a['start'][0],a['start'][1],
                                     a['end'][0],a['end'][1],
                                     color=color)
                 elif a['end'][0]==a['start'][0] and a['end'][1] > a['start'][1]:
-                    #self.stdscr.hline(a['start'][0],a['start'][1],
-                    #            curses.ACS_HLINE,a['end'][1]-a['start'][1])
                     self.draw_line(a['start'][0],a['start'][1],
                                   a['end'][1]-a['start'][1],
                                   color, 'h')
                 elif a['end'][1]==a['start'][1] and a['end'][0] > a['start'][0]:
-                    #self.stdscr.vline(a['start'][0],a['start'][1],
-                    #               curses.ACS_VLINE,a['end'][0]-a['start'][0])
                     self.draw_line(a['start'][0],a['start'][1],
                                    a['end'][0]-a['start'][0],
                                    color,'v')
+                if color == self.green|self.DIM:
+                    self.addcolorstr(color,a['start'][0],a['start'][1],self.crosshair)
             if a['style'] == 'anchor':
                 color = self.magenta
                 if self.artifacts and (self.y,self.x) == (a['y'],a['x']):

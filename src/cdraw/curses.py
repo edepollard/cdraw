@@ -105,44 +105,45 @@ class CursesElement():
         return self.colors[self.config.control_color]
 
     @property
-    def r_arrow(self):
-        return "➤"
-
+    def r_arrow(self): return "➤"
     @property
-    def d_scroll_arrow(self):
-        return "▼"
-
+    def d_scroll_arrow(self): return "▼"
     @property
-    def u_scroll_arrow(self):
-        return "▲"
-
+    def u_scroll_arrow(self): return "▲"
     @property
-    def v_line(self):
-        return "│"
-
+    def v_line(self): return "│"
     @property
-    def h_line(self):
-        return "─"
-
+    def h_line(self): return "─"
     @property
-    def intersect_line(self):
-        return"┼"
-
+    def intersect_line(self): return"┼"
     @property
-    def end_top_line(self):
-        return "┬"
-
+    def end_top_line(self): return "┬"
     @property
-    def end_bottom_line(self):
-        return "┴"
-
+    def end_bottom_line(self): return "┴"
     @property
-    def end_right_line(self):
-        return "┤"
-
+    def end_right_line(self): return "┤"
     @property
-    def end_left_line(self):
-        return "├"
+    def end_left_line(self): return "├"
+    @property
+    def ul_corner(self): return "┌"
+    @property
+    def ur_corner(self): return "┐"
+    @property
+    def ll_corner(self): return "└"
+    @property
+    def lr_corner(self): return "┘"
+    @property
+    def down_arrow(self): return "↑"
+    @property
+    def down_arrow(self): return "↓"
+    @property
+    def left_arrow(self): return "←"
+    @property
+    def right_arrow(self): return "→"
+    @property
+    def return_arrow(self): return "↵"
+    @property
+    def crosshair(self): return "⌖"
 
     @property
     def h(self):
@@ -234,14 +235,19 @@ class CursesElement():
         if fill:
             filler = " "*((lrx-ulx)-1)
         while i < lry:
-            self.addcolorstrs(color,[ [i,ulx,"│"],[i,lrx,"│"] ])
+            self.addcolorstrs(color,[ [i,ulx,self.v_line],
+                                      [i,lrx,self.v_line] ])
             if fill:
                 self.addcolorstr(color,i,ulx+1,filler)
             i=i+1
         frame_width = lrx - ulx + 1
         self.addcolorstrs(color,[
-             [uly,ulx,"┌"], [uly,lrx,"┐"], [lry,ulx, "└"], [lry,lrx, "┘"],
-             [uly,ulx+1,"─"*(frame_width-2)], [lry,ulx+1,"─"*(frame_width-2)] ])
+             [uly,ulx, self.ul_corner],
+             [uly,lrx, self.ur_corner],
+             [lry,ulx, self.ll_corner],
+             [lry,lrx, self.lr_corner],
+             [uly,ulx+1,self.h_line*(frame_width-2)],
+             [lry,ulx+1,self.h_line*(frame_width-2)] ])
 
     def _draw_ruler(self, y=False):
         """ dev utility for measuring screen positions """
