@@ -177,17 +177,17 @@ class CDraw(CursesElement):
         if not self.creating_frame:
             return
         f = self.creating_frame
+        color=self.green|curses.A_BOLD
         if self.x > f['start'][1] and \
            self.y > f['start'][0]:
             self.draw_frame(f['start'][0],f['start'][1],
-                         #self.y,self.x,color=self.yellow)
-                         self.y,self.x,color=self.green|curses.A_BOLD)
+                         self.y,self.x,color=color)
         elif self.y == f['start'][0] and self.x > f['start'][1]:
-             self.stdscr.hline(f['start'][0],f['start'][1],
-                               curses.ACS_HLINE,self.x-f['start'][1])
+             self.draw_line(f['start'][0],f['start'][1],
+                               self.x-f['start'][1],color,'h')
         elif self.x == f['start'][1] and self.y > f['start'][0]:
-             self.stdscr.vline(f['start'][0],f['start'][1],
-                               curses.ACS_VLINE,self.y-f['start'][0])
+             self.draw_line(f['start'][0],f['start'][1],
+                            self.y-f['start'][0],color,'v')
 
 
     def display_artifacts(self):
@@ -200,22 +200,28 @@ class CDraw(CursesElement):
                 if (self.y,self.x) == a['start']:
                     color=self.yellow
                     on_artifact_origin = True
-                if ((self.x in [a['start'][1],a['end'][1]]) and\
-                    (self.y >= a['start'][0] and self.y <= a['end'][0]))\
-                   or\
-                   ((self.y in [a['start'][0],a['end'][0]]) and\
-                    (self.x >= a['start'][1] and self.x <= a['end'][1])):
-                    color=self.yellow
+                #if ((self.x in [a['start'][1],a['end'][1]]) and\
+                #    (self.y >= a['start'][0] and self.y <= a['end'][0]))\
+                #   or\
+                #   ((self.y in [a['start'][0],a['end'][0]]) and\
+                #    (self.x >= a['start'][1] and self.x <= a['end'][1])):
+                #    color=self.yellow
                 if a['end'][1] > a['start'][1] and a['end'][0] > a['start'][0]:
                     self.draw_frame(a['start'][0],a['start'][1],
                                     a['end'][0],a['end'][1],
                                     color=color)
                 elif a['end'][0]==a['start'][0] and a['end'][1] > a['start'][1]:
-                    self.stdscr.hline(a['start'][0],a['start'][1],
-                                curses.ACS_HLINE,a['end'][1]-a['start'][1])
+                    #self.stdscr.hline(a['start'][0],a['start'][1],
+                    #            curses.ACS_HLINE,a['end'][1]-a['start'][1])
+                    self.draw_line(a['start'][0],a['start'][1],
+                                  a['end'][1]-a['start'][1],
+                                  color, 'h')
                 elif a['end'][1]==a['start'][1] and a['end'][0] > a['start'][0]:
-                    self.stdscr.vline(a['start'][0],a['start'][1],
-                                   curses.ACS_VLINE,a['end'][0]-a['start'][0])
+                    #self.stdscr.vline(a['start'][0],a['start'][1],
+                    #               curses.ACS_VLINE,a['end'][0]-a['start'][0])
+                    self.draw_line(a['start'][0],a['start'][1],
+                                   a['end'][0]-a['start'][0],
+                                   color,'v')
             if a['style'] == 'anchor':
                 color = self.magenta
                 if self.artifacts and (self.y,self.x) == (a['y'],a['x']):
@@ -223,7 +229,7 @@ class CDraw(CursesElement):
                     on_artifact_origin = True
                 self.addcolorstr(color,a['y'],a['x'],a['ch'])
         if not on_artifact_origin:
-            self.addcolorstr(self.magenta|self.DIM,self.y,self.x,"+")
+            self.draw_center_crosshair()
 
     def add_anchor(self):
         if (self.y,self.x) == (self.h-1,self.w-1):
@@ -316,13 +322,33 @@ class CDraw(CursesElement):
         _x = 0
         while _y < self.h-1:
             if _y != self.y:
-                if (_y,self.x) != (self.h-1,self.w-1)\
-                   and _y not in [self.h-2,0,1]:
-                    self.addcolorstr(self.dim_white,_y,self.x,"│")
+                if (_y,self.x) != (self.h-1,self.w-1):
+                    if _y not in [self.h-2,0,1]:
+                        self.addcolorstr(self.dim_white,_y,self.x,self.v_line)
+                    elif _y == 1:
+                        self.addcolorstr(self.dim_white,_y,self.x,
+                                         self.end_top_line)
+                    elif _y == self.h-2:
+                        self.addcolorstr(self.dim_white,_y,self.x,
+                                         self.end_bottom_line)
             _y += 1
         while _x < self.w:
             if _x != self.x:
                 if (self.y,_x) != (self.h-1,self.w-1):
-                    self.addcolorstr(self.dim_white,self.y,_x,"─")
+                    self.addcolorstr(self.dim_white,self.y,_x,self.h_line)
             _x += 1
-        self.addcolorstr(self.magenta|self.DIM,self.y,self.x,"+")
+        self.draw_center_crosshair()
+
+    def draw_center_crosshair(self):
+        color = self.magenta|self.BOLD
+        if self.y == 1:
+            self.addcolorstr(color,self.y,self.x,self.end_top_line)
+        elif self.y == self.h-2:
+            self.addcolorstr(color,self.y,self.x,self.end_bottom_line)
+        elif self.x == 0:
+            self.addcolorstr(color,self.y,self.x,self.end_left_line)
+        elif self.x == self.w-1:
+            self.addcolorstr(color,self.y,self.x,self.end_right_line)
+        else:
+            self.addcolorstr(color,self.y,self.x,self.intersect_line)
+

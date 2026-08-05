@@ -26,6 +26,7 @@ class CursesElement():
                 'BLUE' : curses.COLOR_BLUE,
                 'DIM' : curses.A_DIM,
                 'REV' : curses.A_REVERSE,
+                'BOLD' : curses.A_BOLD,
             }
         return self._COLORS
 
@@ -116,6 +117,34 @@ class CursesElement():
         return "▲"
 
     @property
+    def v_line(self):
+        return "│"
+
+    @property
+    def h_line(self):
+        return "─"
+
+    @property
+    def intersect_line(self):
+        return"┼"
+
+    @property
+    def end_top_line(self):
+        return "┬"
+
+    @property
+    def end_bottom_line(self):
+        return "┴"
+
+    @property
+    def end_right_line(self):
+        return "┤"
+
+    @property
+    def end_left_line(self):
+        return "├"
+
+    @property
     def h(self):
         if '_h' not in self.__dict__:
             self.set_geometry()
@@ -161,6 +190,15 @@ class CursesElement():
                        f"{self.h}(h)")
         sys.exit(1)
 
+    def draw_line(self,sy,sx,length,color,direction='h'):
+        if self.config.color:
+            self.stdscr.attron(color)
+        if direction.startswith('v'):
+            self.stdscr.vline(sy,sx,curses.ACS_VLINE,length)
+        elif direction.startswith('h'):
+            self.stdscr.hline(sy,sx,curses.ACS_HLINE,length)
+        if self.config.color:
+            self.stdscr.attroff(color)
 
     def addcolorstr(self, color, *args, **kwargs):
         args = (args[0],args[1]," ") if args[2] is None else args
