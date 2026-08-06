@@ -6,11 +6,17 @@ import sys
 
 class CursesElement():
 
-    def __getattr__(self, name):
-        if name in self.COLORS:
-            return self.COLORS[name]
-        raise AttributeError(
-             f"'{type(self).__name__}' object has no attribute '{name}'")
+    @property
+    def config(self):
+        if '_config' not in self.__dict__:
+            self._config = Config()
+        return self._config
+    @config.setter
+    def config(self, cfg):
+        if not isinstance(cfg, Config):
+            raise TypeError(
+               f"'{type(self).__name__}.config' must be an instance of Config")
+        self._config = cfg
 
     @property
     def COLORS(self):
@@ -31,16 +37,27 @@ class CursesElement():
         return self._COLORS
 
     @property
-    def config(self):
-        if '_config' not in self.__dict__:
-            self._config = Config()
-        return self._config
-    @config.setter
-    def config(self, cfg):
-        if not isinstance(cfg, Config):
-            raise TypeError(
-               f"'{type(self).__name__}.config' must be an instance of Config")
-        self._config = cfg
+    def BLACK(self):   return curses.COLOR_BLACK
+    @property
+    def WHITE(self):   return curses.COLOR_WHITE
+    @property
+    def CYAN(self):    return curses.COLOR_CYAN
+    @property
+    def GREEN(self):   return curses.COLOR_GREEN
+    @property
+    def MAGENTA(self): return curses.COLOR_MAGENTA
+    @property
+    def YELLOW(self):  return curses.COLOR_YELLOW
+    @property
+    def RED(self):     return curses.COLOR_RED
+    @property
+    def BLUE(self):    return  curses.COLOR_BLUE
+    @property
+    def DIM(self):     return curses.A_DIM
+    @property
+    def REV(self):     return curses.A_REVERSE
+    @property
+    def BOLD(self):    return curses.A_BOLD
 
     @property
     def colors(self):
@@ -57,52 +74,38 @@ class CursesElement():
         return self._colors
 
     @property
-    def cyan(self):
-        return self.colors['cyan']
-
+    def cyan(self):    return self.colors['cyan']
     @property
-    def green(self):
-        return self.colors['green']
-
+    def green(self):   return self.colors['green']
     @property
-    def magenta(self):
-        return self.colors['magenta']
-
+    def magenta(self): return self.colors['magenta']
     @property
-    def yellow(self):
-        return self.colors['yellow']
-
+    def yellow(self):  return self.colors['yellow']
     @property
-    def red(self):
-        return self.colors['red']
-
+    def red(self):     return self.colors['red']
     @property
-    def blue(self):
-        return self.colors['blue']
-
+    def blue(self):    return self.colors['blue']
     @property
-    def white(self):
-        return self.colors['white']
-
+    def white(self):   return self.colors['white']
     @property
-    def dim_white(self):
-        return self.colors['white']|self.DIM
+    def dim_white(self): return self.colors['white']|self.DIM
 
     def color_pair(self, index, foreground, background):
         curses.init_pair(index,foreground,background)
         return curses.color_pair(index)
 
     @property
-    def MENU_COLOR(self):
-        return self.colors[self.config.menu_color]
-
+    def MENU_COLOR(self): return self.colors[self.config.menu_color]
     @property
-    def TITLE_COLOR(self):
-        return self.colors[self.config.title_color]
-
+    def menu_color(self): return self.MENU_COLOR
     @property
-    def CONTROL_COLOR(self):
-        return self.colors[self.config.control_color]
+    def TITLE_COLOR(self): return self.colors[self.config.title_color]
+    @property
+    def title_color(self): return self.TITLE_COLOR
+    @property
+    def CONTROL_COLOR(self): return self.colors[self.config.control_color]
+    @property
+    def control_color(self): return self.CONTROL_COLOR
 
     @property
     def r_arrow(self): return "➤"
@@ -192,14 +195,12 @@ class CursesElement():
         sys.exit(1)
 
     def draw_line(self,sy,sx,length,color,direction='h'):
-        if self.config.color:
-            self.stdscr.attron(color)
+        if self.config.color: self.stdscr.attron(color)
         if direction.startswith('v'):
             self.stdscr.vline(sy,sx,curses.ACS_VLINE,length)
         elif direction.startswith('h'):
             self.stdscr.hline(sy,sx,curses.ACS_HLINE,length)
-        if self.config.color:
-            self.stdscr.attroff(color)
+        if self.config.color: self.stdscr.attroff(color)
 
     def addcolorstr(self, color, *args, **kwargs):
         args = (args[0],args[1]," ") if args[2] is None else args
@@ -226,7 +227,7 @@ class CursesElement():
     def draw_frame(self, uly=None, ulx=None,
                          lry=None, lrx=None,
                          color=None, fill=False):
-        color = color if color else self.DIM
+        color = color if color else self.dim_white
         uly = uly if uly else 1
         ulx = ulx if ulx else 0
         lry = lry if lry else self.h-2
@@ -267,16 +268,15 @@ class CursesElement():
                                        y, i+1, f"{tens}")
 
     def highlight_selection(self, y, x, text,
-                            style=False, sel=False, color=False):
+                            style=False, sel=False,
+                            color=False):
         ''' Leave 2 charracters to left of x for arrow'''
         arrow = False
         style = style if style else self.config.select
         select = self.config.select
         if sel and not self.config.color:
             style = 'arrow'
-
         icolor = color if color else self.CONTROL_COLOR
-
         if style == "arrow":
             selected = True if style == select else False
             color = icolor|curses.A_BOLD
@@ -381,10 +381,7 @@ class Menu(CursesElement):
         self.config.select = s
 
     def menu_input(self, key=None):
-        #if not key:
-        #    key = self.stdscr.getch()
         if key == ord('\n'):  # Enter key
-            #self.stdscr.clear()
             return self.selected_item
         elif key == curses.KEY_UP and self.current_row > 0:
             self.current_row -= 1
@@ -837,7 +834,6 @@ class CPanel(CursesElement):
         self._lines = []
         self.controls = []
 
-
     @property
     def lines(self):
         return self._lines
@@ -923,18 +919,35 @@ class CPanel(CursesElement):
             return
         raise ValueError("'line' must be a 'list' of 'list's or None.")
 
-    def draw_panel(self):
+    def scroll_up(self):
+        if self.start > 0:
+            self.start -= 1
+
+    def scroll_down(self):
+        if self.start < len(self.lines)-self.height+1:
+            self.start += 1
+
+    def draw_panel(self, color=False):    
+        color = color if color else self.dim_white
         if self.frame:
             self.draw_frame(self.y,self.x,
                             self.y+self.height,
                             self.x+self.width)
+        if self.start > 0:
+            self.addcolorstr(self.dim_white,self.y+1,self.x,
+                            self.u_scroll_arrow)
+        if self.start <  len(self.lines)-self.height+1:
+            self.addcolorstr(self.dim_white,self.y+self.height-1,self.x,
+                            self.d_scroll_arrow)
         i = 1
         for idx,line in enumerate(self.lines):
             if idx < self.start:
-                next
+                continue
+            if i >= self.height:
+                return
             if line != None:
                 for item in line:
                     self.addcolorstr(item[0],self.y+i,self.x+item[1],
-                                     item[2])
+                                     item[2]+str(idx))
             i += 1
 
