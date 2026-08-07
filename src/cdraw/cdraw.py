@@ -60,18 +60,18 @@ class CDraw(CursesElement):
             elif key == curses.KEY_DOWN:
                 self.y = self.y+1 if self.y < self.h-2 else self.y
             elif key == curses.KEY_UP:
-                if self.creating_frame and\
-                      self.y == self.creating_frame['start'][0]:
-                    pass
-                else:
+                #if self.creating_frame and\
+                #      self.y == self.creating_frame['start'][0]:
+                #    pass
+                #else:
                     self.y = self.y-1 if self.y > 1 else self.y
             elif key == curses.KEY_RIGHT:
                 self.x = self.x+1 if self.x < self.w-1 else self.x
             elif key == curses.KEY_LEFT:
-                if self.creating_frame and\
-                      self.x == self.creating_frame['start'][1]:
-                    pass
-                else:
+                #if self.creating_frame and\
+                #      self.x == self.creating_frame['start'][1]:
+                #    pass
+                #else:
                     self.x = self.x-1 if self.x > 0 else self.x
             elif key in [ord('c'),ord('C')]:
                 self.show_coordinates = False\
@@ -109,9 +109,54 @@ class CDraw(CursesElement):
             self.creating_frame = nf.copy()
             return
         elif self.creating_frame:
-            if (self.y,self.x) != self.creating_frame['start']:
-                self.creating_frame['end'] = (self.y,self.x)
-                self.artifacts.append(self.creating_frame.copy())
+            sy = self.creating_frame['start'][0]
+            sx = self.creating_frame['start'][1]
+            if self.y > sy and self.x > sx:
+                sy = sy
+                sx = sx
+                ey = self.y 
+                ex = self.x
+            elif self.y > sy and self.x == sx:
+                sy = sy 
+                sx = sx
+                ey = self.y
+                ex = self.x
+            if self.y == sy and self.x > sx:
+                sy = sy
+                sx = sx
+                ey = self.y 
+                ex = self.x
+            elif self.y < sy and self.x < sx:
+                ey = sy
+                ex = sx
+                sy = self.y 
+                sx = self.x
+            elif self.y > sy and self.x < sx:
+                sy = sy
+                ey = self.y 
+                ex = sx
+                sx = self.x
+            elif self.y < sy and self.x > sx:
+                sx = sx
+                ey = sy
+                ex = self.x
+                sy = self.y
+            elif self.y == sy and self.x < sx:
+                sy = sy
+                ex = sx
+                sx = self.x
+                ey = sy
+            elif self.y < sy and self.x == sx:
+                ey = sy
+                ex = sx
+                sy = self.y
+                sx = self.x
+            elif (self.y,self.x) == (sy,sx):
+                self.creating_frame = None
+                return
+            self.creating_frame['start']=(sy,sx)
+            self.creating_frame['end']=(ey,ex)
+            self.artifacts.append(self.creating_frame.copy())
             self.creating_frame = None
             return
 
@@ -183,17 +228,25 @@ class CDraw(CursesElement):
         if not self.creating_frame:
             return
         f = self.creating_frame
+        sy = f['start'][0]
+        sx = f['start'][1]
         color=self.green|curses.A_BOLD
-        if self.x > f['start'][1] and \
-           self.y > f['start'][0]:
-            self.draw_frame(f['start'][0],f['start'][1],
-                         self.y,self.x,color=color)
-        elif self.y == f['start'][0] and self.x > f['start'][1]:
-             self.draw_line(f['start'][0],f['start'][1],
-                               self.x-f['start'][1],color,'h')
-        elif self.x == f['start'][1] and self.y > f['start'][0]:
-             self.draw_line(f['start'][0],f['start'][1],
-                            self.y-f['start'][0],color,'v')
+        if self.y > sy and self.x > sx:
+            self.draw_frame(sy,sx,self.y,self.x,color=color)
+        elif self.y < sy and self.x < sx:
+            self.draw_frame(self.y,self.x,sy,sx,color=color)
+        elif self.y < sy and self.x > sx:
+            self.draw_frame(self.y,sx,sy,self.x,color=color)
+        elif self.y > sy and self.x < sx:
+            self.draw_frame(sy,self.x,self.y,sx,color=color)
+        elif self.y == sy and self.x < sx:
+            self.draw_line(self.y,self.x,sx-self.x,color,'h')
+        elif self.y < sy and self.x == sx:
+            self.draw_line(self.y,self.x,sy-self.y,color,'v')
+        elif self.y == sy and self.x > sx:
+            self.draw_line(sy,sx,self.x-sx,color,'h')
+        elif self.y > sy and self.x == sx:
+            self.draw_line(sy,sx,self.y-sx,color,'v')
         self.draw_center_crosshair()
 
 
