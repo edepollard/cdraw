@@ -2,6 +2,59 @@ import curses
 from.curses import CursesElement, CPanel
 from.config import Config
 
+class HotKeys:
+    def __init__(self):
+        self.hot_key_map = {}
+
+    def key_func(self, key):
+        if self.has_key(key):
+           return self.hot_key_map[key]
+
+    def has_key(self, key):
+        return True if key in self.hot_key_map else False
+
+    def add_keys_list(self, key_list):
+        for keys in key_list:
+            self.add_keys(keys[0],keys[1])
+
+    def add_keys(self,keys,func):
+        self.keys = keys
+        self.func = func
+        if not isinstance(keys, list): self.bad_keys()
+        if not callable(func): self.bad_func()
+        for key in keys:
+            self.add(key, func)
+
+    def add(self,key,func):
+            if isinstance(key,int):
+                self.hot_key_map[key] = func
+            elif isinstance(key, str) and len(key) == 1:
+                self.hot_key_map[ord(key)] = func
+            elif isinstance(key, str) and len(key) > 1:
+                if key == 'up': 
+                    self.hot_key_map[curses.KEY_UP] = func
+                elif key == 'down': 
+                    self.hot_key_map[curses.KEY_DOWN] = func
+                elif key == 'left': 
+                    self.hot_key_map[curses.KEY_LEFT] = func
+                elif key == 'right': 
+                    self.hot_key_map[curses.KEY_RIGHT] = func
+                elif key == 'del': 
+                    self.hot_key_map[127] = func
+                    self.hot_key_map[curses.KEY_BACKSPACE] = func
+                    self.hot_key_map[curses.KEY_DC] = func
+            else:
+                raise Exception(f"Unrecognized key or alias: {k}")
+        
+
+    def bad_keys(self):
+        raise TypeError("HotKey.keys must be of type 'list'")
+        exit(1)
+
+    def bad_func(self):
+        raise TypeError("HotKey.func must be callable")
+
+
 class CDraw(CursesElement):
     def __init__(self, config=False):
         self.config=config if config else Config()
@@ -17,7 +70,30 @@ class CDraw(CursesElement):
         self.show_help = 0
         self.art_id = 0
         self.creating_frame = None
+        self.action_map = {}
+        self._hot_keys = HotKeys() 
+        self.hot_keys.add_keys_list([
+              [['a', 'A'], self.add_anchor],
+              [['c', 'C'], self.toggle_show_coordinates],
+              [['d', 'D'], self.toggle_show_artifacts],
+              [['f', 'F'], self.frame],
+              [['h', 'H'], self.toggle_show_help],
+              [['i', 'I'], self.toggle_show_artifact_info],
+              [['n', 'N'], self.info_panel_scroll_down],
+              [['p', 'P'], self.info_panel_scroll_up],
+              [['x', 'X'], self.clear_artifacts],
+              [['q', 'Q'], self.exit_curses],
+              [['del'],    self.remove_selected],
+              [['up'],     self.key_up],
+              [['down'],   self.key_down],
+              [['left'],   self.key_left],
+              [['right'],  self.key_right],
+             ])
 
+
+    @property
+    def hot_keys(self):
+        return self._hot_keys
 
     @property
     def empty_frame(self):
@@ -53,53 +129,39 @@ class CDraw(CursesElement):
     def get_input(self):
         while True:
             key = self.stdscr.getch()
-            if key in [ord('q'),ord('Q')]:
-                self.exit_curses()
-            elif key in [ord('f'),ord('F')]:
-                self.frame()
-            elif key == curses.KEY_DOWN:
-                self.y = self.y+1 if self.y < self.h-2 else self.y
-            elif key == curses.KEY_UP:
-                #if self.creating_frame and\
-                #      self.y == self.creating_frame['start'][0]:
-                #    pass
-                #else:
-                    self.y = self.y-1 if self.y > 1 else self.y
-            elif key == curses.KEY_RIGHT:
-                self.x = self.x+1 if self.x < self.w-1 else self.x
-            elif key == curses.KEY_LEFT:
-                #if self.creating_frame and\
-                #      self.x == self.creating_frame['start'][1]:
-                #    pass
-                #else:
-                    self.x = self.x-1 if self.x > 0 else self.x
-            elif key in [ord('c'),ord('C')]:
-                self.show_coordinates = False\
-                     if self.show_coordinates else True
-            elif key in [ord('d'),ord('D')]:
-                self.show_artifacts = False\
-                     if self.show_artifacts else True
-            elif key in [ord('h'),ord('H')]:
-                self.show_help = False\
-                     if self.show_help else True
-            elif key in [ord('i'),ord('I')]:
-                self.show_artifact_info = False\
-                     if self.show_artifact_info else True
-                self.info_panel_start = 0
-            elif key == ord('n'):
-                self.info_panel.scroll_down()
-                self.info_panel_start = self.info_panel.start
-            elif key == ord('p'): #curses.KEY_PPAGE:
-                self.info_panel.scroll_up()
-                self.info_panel_start = self.info_panel.start
-            elif key in [ord('a'),ord('A')]:
-                self.add_anchor()
-            elif key in [ord('x'),ord('X')]:
-                self.artifacts = []
-            elif key in [127, curses.KEY_BACKSPACE, curses.KEY_DC]:
-                self.remove_selected() 
-                 
+            if self.hot_keys.has_key(key):
+                self.hot_keys.key_func(key)()
             self.draw_screen()
+
+    # Input Functions
+    def clear_artifacts(self):
+        self.artifacts = []
+    def key_up(self):
+        self.y = self.y-1 if self.y > 1 else self.y
+    def key_down(self):
+        self.y = self.y+1 if self.y < self.h-2 else self.y
+    def key_left(self):
+        self.x = self.x-1 if self.x > 0 else self.x
+    def key_right(self):
+        self.x = self.x+1 if self.x < self.w-1 else self.x
+    def toggle_show_coordinates(self):
+        self.show_coordinates = self.toggle(self.show_coordinates)
+    def toggle_show_artifacts(self):
+        self.show_artifacts = self.toggle(self.show_artifacts)
+    def toggle_show_help(self):
+        self.show_help = self.toggle(self.show_help)
+    def toggle_show_artifact_info(self):
+        self.show_artifact_info = self.toggle(self.show_artifact_info)
+        self.info_panel_start = 0
+    def info_panel_scroll_down(self):
+        self.info_panel.scroll_down()
+        self.info_panel_start = self.info_panel.start
+    def info_panel_scroll_up(self):
+        self.info_panel.scroll_up()
+        self.info_panel_start = self.info_panel.start
+    def toggle(self, item):
+        return True if not item else False
+
 
     def frame(self):
         if not self.creating_frame:
@@ -246,7 +308,7 @@ class CDraw(CursesElement):
         elif self.y == sy and self.x > sx:
             self.draw_line(sy,sx,self.x-sx,color,'h')
         elif self.y > sy and self.x == sx:
-            self.draw_line(sy,sx,self.y-sx,color,'v')
+            self.draw_line(sy,sx,self.y-sy,color,'v')
         self.draw_center_crosshair()
 
 
