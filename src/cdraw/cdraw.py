@@ -54,6 +54,127 @@ class HotKeys:
     def bad_func(self):
         raise TypeError("HotKey.func must be callable")
 
+class Artifact(CursesElement):
+    def __init__(self, stdscr, starty, startx,
+                      endy=None, endx=None, color=None):
+        self.stdscr = stdscr
+        self._id = -1
+        self.maxy = self.h-2
+        self.maxx = self.w
+        self.miny = 0
+        self.minx = 2
+        self.starty = starty
+        self.startx = startx
+        self.endy = endy
+        self.endx = endx
+        self.acolor = color
+
+
+    @property
+    def aid(self):
+        return self.aid
+    @aid.setter
+    def aid(self, i):
+        if isinstance(i, int) and i >= 0:
+            self._aid = i
+        else:
+            raise("aid must be a positive integer")
+
+    @property
+    def starty(self):
+        return self._starty
+    @starty.setter
+    def starty(self, y):
+        if self.validy(y):
+            self._starty = y
+        else:
+            raise ValueError(
+                  f"starty must be an int between {self.miny} and {self.maxy}")
+
+    @property
+    def startx(self):
+        return self._startx
+    @startx.setter
+    def startx(self, x):
+        if self.validx(x):
+            self._startx = x
+        else:
+            raise ValueError(
+                  f"startx must be an int between {self.minx} and {self.maxx}")
+
+    @property
+    def endy(self):
+        return self._endy
+    @endy.setter
+    def endy(self, y):
+        if self.validy(y) or y == None:
+            self._endy = y
+        else:
+            raise ValueError(
+             f"endy must be an int between {self.miny} and {self.maxy} or None")
+
+    @property
+    def endx(self):
+        return self._endy
+    @endx.setter
+    def endx(self, x):
+        if self.validx(x) or x == None:
+            self._endx = x
+        else:
+            raise ValueError(
+             f"endx must be an int between {self.minx} and {self.maxx} or None")
+
+    def validy(self, y):
+        if isinstance(y, int) and y >= 0 and y < self.maxy: return True
+        return False
+
+    def validx(self, x):
+        if isinstance(x, int) and x >= 0 and x < self.maxx: return True
+        return False
+
+    @property
+    def startyx(self):
+        return (self.starty,self.startx)
+    @startyx.setter
+    def startyx(self, yx):
+        if isinstance(yx, tuple) and len(yx) == 2:
+            self.starty = yx[0]
+            self.startx = yx[1]
+        else:
+            raise TypeError("startyx must be a tuple if length 2 of ints")
+
+    @property
+    def endyx(self):
+        return (self.endy, self.endx)
+    @endyx.setter
+    def endyx(self, yx):
+        if isinstance(yx, tuple) and len(yx) == 2:
+            self.endy = yx[0]
+            self.endx = yx[1]
+        else:
+            raise TypeError("endyx must be a tuple if length 2 of ints")
+    
+
+class Anchor(Artifact):
+    def __init__(self, stdscr, starty, startx, ch='A',
+                       endy=None, endx=None, color=None):
+        super().__init__(stdscr, starty, startx, endy, endx, color)
+        self.ch = ch
+
+    @property
+    def style(self):
+        return "Anchor"
+
+    @property
+    def ch(self):
+        return self._ch
+    @ch.setter
+    def ch(self, c):
+        if isinstance(c, str) and len(c) == 1:
+            self._ch = c
+        else:
+            raise ValueError("ch must be a single str character") 
+
 
 class CDraw(CursesElement):
     def __init__(self, config=False):
@@ -64,12 +185,15 @@ class CDraw(CursesElement):
         self.y = 1
         self.x = 0
         self.artifacts = []
+        self.artifacts2 = []
         self.show_coordinates = 0
         self.show_artifacts = 1
         self.show_artifact_info = False
         self.show_help = 0
         self.art_id = 0
         self.creating_frame = None
+        self.selected = None
+        self.moving_item = False
         self.action_map = {}
         self._hot_keys = HotKeys() 
         self.hot_keys.add_keys_list([
@@ -83,6 +207,7 @@ class CDraw(CursesElement):
               [['p', 'P'], self.info_panel_scroll_up],
               [['x', 'X'], self.clear_artifacts],
               [['q', 'Q'], self.exit_curses],
+              [[' '],      self.move],
               [['del'],    self.remove_selected],
               [['up'],     self.key_up],
               [['down'],   self.key_down],
@@ -137,21 +262,51 @@ class CDraw(CursesElement):
     def clear_artifacts(self):
         self.artifacts = []
     def key_up(self):
-        self.y = self.y-1 if self.y > 1 else self.y
+        if self.y > 1 and not self.moving_item:
+            self.y -= 1
+        if self.moving_item and self.y > 2:
+            for a in self.artifacts:
+                if self.selected == a['id']:
+                    a['y'] -= 1
+                    break
+            self.y -= 1
     def key_down(self):
-        self.y = self.y+1 if self.y < self.h-2 else self.y
+        if self.y < self.h-2 and not self.moving_item:
+            self.y += 1
+        elif self.moving_item and self.y < self.h-3:
+            for a in self.artifacts:
+                if self.selected == a['id']:
+                    a['y'] += 1
+                    break
+            self.y += 1
     def key_left(self):
-        self.x = self.x-1 if self.x > 0 else self.x
+        if self.x > 0 and not self.moving_item:
+            self.x -= 1
+        if self.moving_item and self.x > 0:
+            for a in self.artifacts:
+                if self.selected == a['id']:
+                    a['x'] = self.x-1
+                    break
+            self.x -= 1
     def key_right(self):
-        self.x = self.x+1 if self.x < self.w-1 else self.x
+        if self.x < self.w-1 and not self.moving_item:
+            self.x += 1
+        if self.moving_item and self.x< self.w-1:
+            for a in self.artifacts:
+                if self.selected == a['id']:
+                    a['x'] = self.x+1
+                    break 
+            self.x += 1
+          
+        #self.x = self.x+1 if self.x < self.w-1 else self.x
     def toggle_show_coordinates(self):
-        self.show_coordinates = self.toggle(self.show_coordinates)
+        self.show_coordinates = not self.show_coordinates
     def toggle_show_artifacts(self):
-        self.show_artifacts = self.toggle(self.show_artifacts)
+        self.show_artifacts = not self.show_artifacts
     def toggle_show_help(self):
-        self.show_help = self.toggle(self.show_help)
+        self.show_help = not self.show_help
     def toggle_show_artifact_info(self):
-        self.show_artifact_info = self.toggle(self.show_artifact_info)
+        self.show_artifact_info = not self.show_artifact_info
         self.info_panel_start = 0
     def info_panel_scroll_down(self):
         self.info_panel.scroll_down()
@@ -159,9 +314,21 @@ class CDraw(CursesElement):
     def info_panel_scroll_up(self):
         self.info_panel.scroll_up()
         self.info_panel_start = self.info_panel.start
-    def toggle(self, item):
-        return True if not item else False
-
+    
+    def move(self):
+        if self.creating_frame: return
+        #if self.selected != None:
+        #    self.selected = None
+        #    self.moving_item = False
+        for a in self.artifacts:
+            if self.artifactyx(a) == self.yx:
+                if self.selected != None:
+                    self.selected = None
+                    self.moving_item = False
+                    break
+                self.selected = a['id']
+                self.moving_item = True
+                break
 
     def frame(self):
         if not self.creating_frame:
@@ -316,12 +483,15 @@ class CDraw(CursesElement):
         if not self.show_artifacts or not self.artifacts:
             return
         on_artifact_origin = False
+        sel_color = self.orange
         for a in self.artifacts:
             if a['style'] =='frame':
                 color = self.green|self.DIM
                 if (self.y,self.x) == a['start']:
                     color=self.yellow
                     on_artifact_origin = True
+                if self.selected == a['id']:
+                    color = sel_color
                 if a['end'][1] > a['start'][1] and a['end'][0] > a['start'][0]:
                     self.draw_frame(a['start'][0],a['start'][1],
                                     a['end'][0],a['end'][1],
@@ -349,6 +519,8 @@ class CDraw(CursesElement):
                 if self.artifacts and (self.y,self.x) == (a['y'],a['x']):
                     color = self.yellow
                     on_artifact_origin = True
+                if a['id'] == self.selected:
+                     color = sel_color
                 self.addcolorstr(color,a['y'],a['x'],a['ch'])
         if not on_artifact_origin:
             self.draw_center_crosshair()
@@ -363,6 +535,8 @@ class CDraw(CursesElement):
                  'x':self.x,
                  'ch':'A',
                   })
+        
+        self.artifacts2.append(Anchor(self.stdscr, self.new_id, self.y,self.x))
 
     def remove_selected(self):
         for a in self.artifacts:

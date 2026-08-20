@@ -70,6 +70,7 @@ class CursesElement():
                 'red'       : self.color_pair(6, self.RED, self.BLACK),
                 'blue'      : self.color_pair(7, self.BLUE, self.BLACK),
                 'white'     : self.color_pair(8, self.WHITE, self.BLACK),
+                'orange'    : self.color_pair(9, 208, self.BLACK),
                }
         return self._colors
 
@@ -87,6 +88,8 @@ class CursesElement():
     def blue(self):    return self.colors['blue']
     @property
     def white(self):   return self.colors['white']
+    @property
+    def orange(self):   return self.colors['orange']
     @property
     def dim_white(self): return self.colors['white']|self.DIM
 
