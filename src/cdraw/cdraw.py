@@ -55,10 +55,10 @@ class HotKeys:
         raise TypeError("HotKey.func must be callable")
 
 class Artifact(CursesElement):
-    def __init__(self, stdscr, starty, startx,
+    def __init__(self, stdscr, aid, starty, startx,
                       endy=None, endx=None, color=None):
         self.stdscr = stdscr
-        self._id = -1
+        self._aid = aid
         self.maxy = self.h-2
         self.maxx = self.w
         self.miny = 0
@@ -72,7 +72,7 @@ class Artifact(CursesElement):
 
     @property
     def aid(self):
-        return self.aid
+        return self._aid
     @aid.setter
     def aid(self, i):
         if isinstance(i, int) and i >= 0:
@@ -132,6 +132,53 @@ class Artifact(CursesElement):
         if isinstance(x, int) and x >= 0 and x < self.maxx: return True
         return False
 
+    def sanitize(self):
+        # translates 2 dimensional objects not written with start upper left
+        if self.endx is not None and self.endy is not None:
+            x1, x2 = sorted([self.startx, self.endx])
+            y1, y2 = sorted([self.starty, self.endy])
+            self.startx, self.endx = x1, x2
+            self.starty, self.endy = y1,y2
+
+
+    @property
+    def width(self):
+        if self.endx is None or self.startx == self.endx:
+            return 1
+        else:
+            return abs(self.endx - self.startx)+1
+
+    @property
+    def height(self):
+        if self.endy is None or self.starty == self.endy:
+            return 1
+        else:
+            return abs(self.endy - self.starty)+1
+
+    @property
+    def internal_height(self):
+        return max([0,self.height - 2])
+
+    @property
+    def internal_width(self):
+        return max([0,self.width - 2])
+   
+    @property
+    def dimensions_tuple(self):
+        return self.height, self.width
+ 
+    @property
+    def dimensions(self):
+        return f"H:{self.height}, W:{self.width}"
+
+    @property
+    def internal_dim_tuple(self):
+        return self.internal_height, self.internal_width
+
+    @property
+    def internal_dimensions(self):
+        return f"H:{self.internal_height}, W:{self.internal_width}"
+
     @property
     def startyx(self):
         return (self.starty,self.startx)
@@ -156,10 +203,10 @@ class Artifact(CursesElement):
     
 
 class Anchor(Artifact):
-    def __init__(self, stdscr, starty, startx, ch='A',
+    def __init__(self, stdscr, aid, starty, startx,
                        endy=None, endx=None, color=None):
-        super().__init__(stdscr, starty, startx, endy, endx, color)
-        self.ch = ch
+        super().__init__(stdscr, aid, starty, startx, endy, endx, color)
+        self._ch = "☼"
 
     @property
     def style(self):
@@ -170,10 +217,18 @@ class Anchor(Artifact):
         return self._ch
     @ch.setter
     def ch(self, c):
-        if isinstance(c, str) and len(c) == 1:
-            self._ch = c
+        if isinstance(c, str) and len(f"{c}") == 1:
+            self._ch = str(c)
         else:
-            raise ValueError("ch must be a single str character") 
+            raise ValueError(f"ch must be a single str character not '{c}'") 
+
+class Frame(Artifact):
+    def __init__(self, stdscr, aid, starty, startx, endy, endx, color=None):
+        super().__init__(stdscr, aid, starty, startx, endy, endx, color)
+
+    @property
+    def style(self):
+        return "Frame"
 
 
 class CDraw(CursesElement):
@@ -533,7 +588,8 @@ class CDraw(CursesElement):
                  'style':'anchor',
                  'y':self.y,
                  'x':self.x,
-                 'ch':'A',
+                 #'ch':'A',
+                 'ch':'☼',
                   })
         
         self.artifacts2.append(Anchor(self.stdscr, self.new_id, self.y,self.x))
